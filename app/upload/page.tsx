@@ -180,6 +180,10 @@ export default function UploadPage() {
             {uploadedCount} fotoğraf başarıyla yüklendi.
           </p>
 
+          <p className="mt-3 rounded-xl border border-[#E8C7C8] bg-[#FFFDFB] px-4 py-3 text-xs font-medium text-[#6F5B5D]">
+            Gönderilen resimler sadece Berna ve Artun ile paylaşılacaktır.
+          </p>
+
           <button
             type="button"
             onClick={resetUploadForm}
@@ -213,6 +217,10 @@ export default function UploadPage() {
 
           <p className="mt-2 text-sm text-[#6F5B5D]">
             Bu özel günden karelerinizi bizimle paylaşın.
+          </p>
+
+          <p className="mt-4 rounded-xl border border-[#E8C7C8] bg-[#FFF9F6] px-4 py-3 text-xs font-medium text-[#6F5B5D]">
+            Gönderilen resimler sadece Berna ve Artun ile paylaşılacaktır.
           </p>
         </div>
 
