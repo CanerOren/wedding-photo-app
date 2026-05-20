@@ -7,7 +7,6 @@ import { compressImage } from '@/lib/imageCompression'
 
 export default function UploadPage() {
   const [files, setFiles] = useState<File[]>([])
-  const [guestName, setGuestName] = useState('')
   const [message, setMessage] = useState('')
   const [status, setStatus] = useState('')
   const [isUploading, setIsUploading] = useState(false)
@@ -49,7 +48,6 @@ export default function UploadPage() {
 
   const resetUploadForm = () => {
     setFiles([])
-    setGuestName('')
     setMessage('')
     setStatus('')
     setUploadedCount(0)
@@ -120,7 +118,7 @@ export default function UploadPage() {
           },
           body: JSON.stringify({
             file_path: filePath,
-            guest_name: guestName.trim() || null,
+            guest_name: null,
             message: message.trim() || null,
             file_size: compressed.size,
             mime_type: compressed.type || file.type,
@@ -146,7 +144,6 @@ export default function UploadPage() {
       setStatus('')
 
       setFiles([])
-      setGuestName('')
       setMessage('')
       setFileInputKey(prev => prev + 1)
     } catch (err: any) {
@@ -165,14 +162,14 @@ export default function UploadPage() {
           </div>
 
           <p className="text-sm tracking-[0.25em] uppercase text-[#B76E79] font-semibold">
-            Teşekkürler
+            06/06/2026
           </p>
 
-          <h1 className="mt-2 text-3xl font-bold text-[#7A2E3A]">
-            Fotoğraflarınız Yüklendi
+          <h1 className="mt-2 text-4xl font-bold tracking-wide text-[#7A2E3A]">
+            Berna & Artun
           </h1>
 
-          <p className="mt-3 text-sm text-[#6F5B5D]">
+          <p className="mt-4 text-sm text-[#6F5B5D]">
             Bu özel güne katkınız için teşekkür ederiz.
           </p>
 
@@ -180,8 +177,8 @@ export default function UploadPage() {
             {uploadedCount} fotoğraf başarıyla yüklendi.
           </p>
 
-          <p className="mt-3 rounded-xl border border-[#E8C7C8] bg-[#FFFDFB] px-4 py-3 text-xs font-medium text-[#6F5B5D]">
-            Gönderilen resimler sadece Berna ve Artun ile paylaşılacaktır.
+          <p className="mt-3 text-xs italic text-[#6F5B5D]">
+            (Tüm fotoğraflar yalnızca gelin ve damat tarafından görüntülenecektir.)
           </p>
 
           <button
@@ -208,33 +205,30 @@ export default function UploadPage() {
       <div className="w-full max-w-md rounded-2xl bg-white/95 p-6 shadow-xl border border-[#F0D6D3]">
         <div className="mb-6 text-center">
           <p className="text-sm tracking-[0.25em] uppercase text-[#B76E79] font-semibold">
-            Wedding Memories
+            06/06/2026
           </p>
 
-          <h1 className="mt-2 text-3xl font-bold text-[#7A2E3A]">
-            Düğün Fotoğraf Yükleme
+          <h1 className="mt-2 text-4xl font-bold tracking-wide text-[#7A2E3A]">
+            Berna & Artun
           </h1>
 
-          <p className="mt-2 text-sm text-[#6F5B5D]">
-            Bu özel günden karelerinizi bizimle paylaşın.
-          </p>
+          <div className="mt-4 space-y-1 text-sm text-[#6F5B5D]">
+            <p>
+              En güzel anlarımızı birlikte hatıralara dönüştürelim 🤍
+            </p>
 
-          <p className="mt-4 rounded-xl border border-[#E8C7C8] bg-[#FFF9F6] px-4 py-3 text-xs font-medium text-[#6F5B5D]">
-            Gönderilen resimler sadece Berna ve Artun ile paylaşılacaktır.
-          </p>
+            <p>
+              Bu özel günde yakaladığınız kareleri bizimle paylaşabilirsiniz.
+            </p>
+
+            <p className="pt-2 text-xs italic">
+              (Tüm fotoğraflar yalnızca gelin ve damat tarafından görüntülenecektir.)
+            </p>
+          </div>
         </div>
 
-        <input
-          type="text"
-          placeholder="Adınız (opsiyonel)"
-          value={guestName}
-          onChange={e => setGuestName(e.target.value)}
-          disabled={isUploading}
-          className="mb-3 w-full rounded-xl border border-[#E8C7C8] bg-[#FFFDFB] px-4 py-3 text-[#3D2C2E] placeholder:text-[#A98B8E] outline-none transition focus:border-[#B76E79] focus:ring-2 focus:ring-[#F3D7D8] disabled:bg-[#F8F0EE]"
-        />
-
         <textarea
-          placeholder="Mesajınız (opsiyonel)"
+          placeholder="Bize küçük bir not bırakabilirsiniz."
           value={message}
           onChange={e => setMessage(e.target.value)}
           disabled={isUploading}
