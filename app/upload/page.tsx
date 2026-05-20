@@ -12,6 +12,8 @@ export default function UploadPage() {
   const [status, setStatus] = useState('')
   const [isUploading, setIsUploading] = useState(false)
   const [fileInputKey, setFileInputKey] = useState(0)
+  const [uploadCompleted, setUploadCompleted] = useState(false)
+  const [uploadedCount, setUploadedCount] = useState(0)
 
   const addSelectedFiles = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {
@@ -31,6 +33,7 @@ export default function UploadPage() {
       })
 
       setStatus('')
+      setUploadCompleted(false)
       e.target.value = ''
     }
   }
@@ -41,6 +44,16 @@ export default function UploadPage() {
 
   const clearSelectedFiles = () => {
     setFiles([])
+    setFileInputKey(prev => prev + 1)
+  }
+
+  const resetUploadForm = () => {
+    setFiles([])
+    setGuestName('')
+    setMessage('')
+    setStatus('')
+    setUploadedCount(0)
+    setUploadCompleted(false)
     setFileInputKey(prev => prev + 1)
   }
 
@@ -64,6 +77,7 @@ export default function UploadPage() {
 
     try {
       setIsUploading(true)
+      setUploadCompleted(false)
 
       let successCount = 0
 
@@ -127,7 +141,9 @@ export default function UploadPage() {
         successCount++
       }
 
-      setStatus(`${successCount} fotoğraf başarıyla yüklendi!`)
+      setUploadedCount(successCount)
+      setUploadCompleted(true)
+      setStatus('')
 
       setFiles([])
       setGuestName('')
@@ -138,6 +154,49 @@ export default function UploadPage() {
     } finally {
       setIsUploading(false)
     }
+  }
+
+  if (uploadCompleted) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-[#FFF7F2] px-4 py-10">
+        <div className="w-full max-w-md rounded-2xl bg-white/95 p-6 shadow-xl border border-[#F0D6D3] text-center">
+          <div className="mx-auto mb-5 flex h-16 w-16 items-center justify-center rounded-full bg-[#FFF1ED] border border-[#F0D6D3]">
+            <span className="text-3xl">✓</span>
+          </div>
+
+          <p className="text-sm tracking-[0.25em] uppercase text-[#B76E79] font-semibold">
+            Teşekkürler
+          </p>
+
+          <h1 className="mt-2 text-3xl font-bold text-[#7A2E3A]">
+            Fotoğraflarınız Yüklendi
+          </h1>
+
+          <p className="mt-3 text-sm text-[#6F5B5D]">
+            Bu özel güne katkınız için teşekkür ederiz.
+          </p>
+
+          <p className="mt-4 rounded-xl border border-[#F0D6D3] bg-[#FFF9F6] px-4 py-3 text-sm font-semibold text-[#5A4245]">
+            {uploadedCount} fotoğraf başarıyla yüklendi.
+          </p>
+
+          <button
+            type="button"
+            onClick={resetUploadForm}
+            className="mt-5 w-full rounded-xl bg-[#B76E79] py-3 font-semibold text-white shadow-md transition hover:bg-[#9F5965]"
+          >
+            Yeni Fotoğraf Yükle
+          </button>
+
+          <Link
+            href="/admin/login"
+            className="mt-3 inline-flex w-full items-center justify-center rounded-xl border border-[#B76E79] bg-white px-4 py-3 text-sm font-semibold text-[#7A2E3A] transition hover:bg-[#FFF1ED]"
+          >
+            Admin Girişi
+          </Link>
+        </div>
+      </div>
+    )
   }
 
   return (
