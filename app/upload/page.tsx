@@ -40,9 +40,8 @@ export default function UploadPage() {
 
       setStatus('')
       setUploadCompleted(false)
+      e.target.value = ''
     }
-
-    e.target.value = ''
   }
 
   const removeSelectedFile = (indexToRemove: number) => {
@@ -51,7 +50,6 @@ export default function UploadPage() {
 
   const clearSelectedFiles = () => {
     setFiles([])
-    setStatus('')
     setFileInputKey(prev => prev + 1)
   }
 
@@ -306,7 +304,6 @@ export default function UploadPage() {
             type="file"
             accept="image/*"
             capture="environment"
-            multiple
             onChange={addSelectedFiles}
             disabled={isUploading}
             className="hidden"
@@ -365,7 +362,7 @@ export default function UploadPage() {
                   disabled={isUploading}
                   className="text-xs font-semibold text-[#B76E79] hover:text-[#7A2E3A] disabled:opacity-50"
                 >
-                  Tümünü İptal Et
+                  Temizle
                 </button>
               </div>
 
@@ -390,26 +387,6 @@ export default function UploadPage() {
                   </li>
                 ))}
               </ul>
-
-              <div className="mt-3 grid grid-cols-2 gap-2">
-                <label
-                  htmlFor="camera-upload-input"
-                  className={`flex cursor-pointer items-center justify-center rounded-xl border border-[#D9A5AD] bg-white/85 px-3 py-2 text-center text-xs font-semibold text-[#7A2E3A] transition hover:bg-[#FFF1ED] ${
-                    isUploading ? 'pointer-events-none opacity-50' : ''
-                  }`}
-                >
-                  Fotoğraf Çekmeye Devam Et
-                </label>
-
-                <button
-                  type="button"
-                  onClick={clearSelectedFiles}
-                  disabled={isUploading}
-                  className="rounded-xl border border-[#D9A5AD] bg-white/85 px-3 py-2 text-xs font-semibold text-[#7A2E3A] transition hover:bg-[#FFF1ED] disabled:cursor-not-allowed disabled:opacity-50"
-                >
-                  Vazgeç / İptal
-                </button>
-              </div>
             </div>
           )}
 
