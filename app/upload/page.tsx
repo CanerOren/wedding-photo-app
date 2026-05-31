@@ -12,6 +12,37 @@ const weddingFont = Luxurious_Script({
   display: 'swap',
 })
 
+const MAX_FILE_SIZE = 50 * 1024 * 1024 // 50 MB
+
+const ALLOWED_IMAGE_TYPES = [
+  'image/jpeg',
+  'image/jpg',
+  'image/png',
+  'image/x-png',
+  'image/webp',
+  'image/heic',
+  'image/heif',
+]
+
+const ALLOWED_IMAGE_EXTENSIONS = [
+  '.jpg',
+  '.jpeg',
+  '.png',
+  '.webp',
+  '.heic',
+  '.heif',
+  '.jfif',
+]
+
+const isAllowedImageFile = (file: File) => {
+  const fileName = file.name.toLowerCase()
+
+  return (
+    ALLOWED_IMAGE_TYPES.includes(file.type) ||
+    ALLOWED_IMAGE_EXTENSIONS.some(ext => fileName.endsWith(ext))
+  )
+}
+
 export default function UploadPage() {
   const [files, setFiles] = useState<File[]>([])
   const [message, setMessage] = useState('')
@@ -25,12 +56,35 @@ export default function UploadPage() {
     if (e.target.files && e.target.files.length > 0) {
       const selectedFiles = Array.from(e.target.files)
 
+      const validFiles = selectedFiles.filter(file => {
+        if (!isAllowedImageFile(file)) {
+          return false
+        }
+
+        if (file.size > MAX_FILE_SIZE) {
+          return false
+        }
+
+        return true
+      })
+
+      const rejectedCount = selectedFiles.length - validFiles.length
+
+      if (validFiles.length === 0) {
+        setStatus(
+          'Seçtiğiniz dosya uygun değil. Lütfen yalnızca 50 MB’dan küçük fotoğraf yükleyin.'
+        )
+        setUploadCompleted(false)
+        e.target.value = ''
+        return
+      }
+
       setFiles(prev => {
         const existingKeys = new Set(
           prev.map(file => `${file.name}-${file.size}-${file.lastModified}`)
         )
 
-        const newFiles = selectedFiles.filter(file => {
+        const newFiles = validFiles.filter(file => {
           const key = `${file.name}-${file.size}-${file.lastModified}`
           return !existingKeys.has(key)
         })
@@ -38,7 +92,14 @@ export default function UploadPage() {
         return [...prev, ...newFiles]
       })
 
-      setStatus('')
+      if (rejectedCount > 0) {
+        setStatus(
+          `${validFiles.length} fotoğraf eklendi. ${rejectedCount} dosya fotoğraf olmadığı veya 50 MB’dan büyük olduğu için eklenmedi.`
+        )
+      } else {
+        setStatus('')
+      }
+
       setUploadCompleted(false)
       e.target.value = ''
     }
@@ -68,10 +129,14 @@ export default function UploadPage() {
         ? crypto.randomUUID()
         : `${Date.now()}-${index}`
 
-    return `${Date.now()}-${uniquePart}-${originalName}`
-      .normalize('NFD')
-      .replace(/[\u0300-\u036f]/g, '')
-      .replace(/[^a-zA-Z0-9-_.]/g, '_')
+    const safeOriginalName =
+      originalName
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .replace(/[^a-zA-Z0-9-_.]/g, '_')
+        .slice(-90) || 'photo.jpg'
+
+    return `${Date.now()}-${uniquePart}-${safeOriginalName}`
   }
 
   const handleUpload = async () => {
@@ -89,9 +154,30 @@ export default function UploadPage() {
       for (let i = 0; i < files.length; i++) {
         const file = files[i]
 
+        if (!isAllowedImageFile(file)) {
+          setStatus(
+            `${i + 1}. dosya fotoğraf formatında değil. Lütfen sadece fotoğraf yükleyin.`
+          )
+          return
+        }
+
+        if (file.size > MAX_FILE_SIZE) {
+          setStatus(
+            `${i + 1}. fotoğraf 50 MB’dan büyük. Lütfen daha küçük bir fotoğraf seçin.`
+          )
+          return
+        }
+
         setStatus(`${i + 1}/${files.length} fotoğraf sıkıştırılıyor...`)
 
         const compressed = await compressImage(file)
+
+        if (compressed.size > MAX_FILE_SIZE) {
+          setStatus(
+            `${i + 1}. fotoğraf sıkıştırıldıktan sonra bile 50 MB’dan büyük. Lütfen daha küçük bir fotoğraf seçin.`
+          )
+          return
+        }
 
         const fileName = createSafeFileName(compressed.name || file.name, i)
         const filePath = `photos/${fileName}`
@@ -101,7 +187,7 @@ export default function UploadPage() {
         const { error: uploadError } = await supabase.storage
           .from('wedding-photos')
           .upload(filePath, compressed, {
-            contentType: compressed.type || file.type,
+            contentType: compressed.type || file.type || 'image/jpeg',
             upsert: false,
           })
 
@@ -124,7 +210,7 @@ export default function UploadPage() {
             guest_name: null,
             message: message.trim() || null,
             file_size: compressed.size,
-            mime_type: compressed.type || file.type,
+            mime_type: compressed.type || file.type || 'image/jpeg',
           }),
         })
 
@@ -149,8 +235,11 @@ export default function UploadPage() {
       setFiles([])
       setMessage('')
       setFileInputKey(prev => prev + 1)
-    } catch (err: any) {
-      setStatus('Hata: ' + err.message)
+    } catch (err: unknown) {
+      const errorMessage =
+        err instanceof Error ? err.message : 'Bilinmeyen bir hata oluştu'
+
+      setStatus('Hata: ' + errorMessage)
     } finally {
       setIsUploading(false)
     }
