@@ -46,6 +46,25 @@ export default function AdminPhotos() {
     return data.publicUrl
   }
 
+  const isVideoMedia = (photo: Photo) => {
+    const mimeType = photo.mime_type?.toLowerCase() || ''
+    const filePath = photo.file_path.toLowerCase()
+
+    return (
+      mimeType.startsWith('video/') ||
+      filePath.endsWith('.mp4') ||
+      filePath.endsWith('.mov') ||
+      filePath.endsWith('.m4v') ||
+      filePath.endsWith('.webm') ||
+      filePath.endsWith('.avi') ||
+      filePath.endsWith('.mkv')
+    )
+  }
+
+  const getMediaLabel = (photo: Photo) => {
+    return isVideoMedia(photo) ? 'Video' : 'Fotoğraf'
+  }
+
   const getDownloadFileName = (photo: Photo) => {
     const fileNameFromPath = photo.file_path.split('/').pop()
 
@@ -53,7 +72,7 @@ export default function AdminPhotos() {
       return fileNameFromPath
     }
 
-    return `wedding-photo-${photo.id}.jpg`
+    return `wedding-media-${photo.id}`
   }
 
   const handleDownloadPhoto = async (
@@ -70,7 +89,7 @@ export default function AdminPhotos() {
       const response = await fetch(photoUrl)
 
       if (!response.ok) {
-        throw new Error('Fotoğraf indirilemedi.')
+        throw new Error('Medya indirilemedi.')
       }
 
       const blob = await response.blob()
@@ -87,7 +106,7 @@ export default function AdminPhotos() {
       URL.revokeObjectURL(blobUrl)
     } catch (err: any) {
       console.error(err)
-      setErrorMsg(err.message || 'Fotoğraf indirilirken bir hata oluştu.')
+      setErrorMsg(err.message || 'Medya indirilirken bir hata oluştu.')
     } finally {
       setDownloadingId(null)
     }
@@ -95,7 +114,7 @@ export default function AdminPhotos() {
 
   const handleBulkDownload = async () => {
     if (photos.length === 0) {
-      setErrorMsg('İndirilecek fotoğraf bulunamadı.')
+      setErrorMsg('İndirilecek medya bulunamadı.')
       return
     }
 
@@ -110,12 +129,12 @@ export default function AdminPhotos() {
         const photo = photos[i]
         const photoUrl = getPhotoUrl(photo.file_path)
 
-        setBulkDownloadStatus(`${i + 1}/${photos.length} fotoğraf ZIP dosyasına ekleniyor...`)
+        setBulkDownloadStatus(`${i + 1}/${photos.length} medya ZIP dosyasına ekleniyor...`)
 
         const response = await fetch(photoUrl)
 
         if (!response.ok) {
-          throw new Error(`${i + 1}. fotoğraf indirilemedi.`)
+          throw new Error(`${i + 1}. medya indirilemedi.`)
         }
 
         const blob = await response.blob()
@@ -131,7 +150,7 @@ export default function AdminPhotos() {
 
       const link = document.createElement('a')
       link.href = zipUrl
-      link.download = `wedding-photos-${new Date().toISOString().slice(0, 10)}.zip`
+      link.download = `wedding-media-${new Date().toISOString().slice(0, 10)}.zip`
 
       document.body.appendChild(link)
       link.click()
@@ -239,7 +258,7 @@ export default function AdminPhotos() {
     event?.stopPropagation()
 
     const confirmed = window.confirm(
-      'Bu fotoğrafı silmek istediğine emin misin? Bu işlem geri alınamaz.'
+      'Bu medyayı silmek istediğine emin misin? Bu işlem geri alınamaz.'
     )
 
     if (!confirmed) return
@@ -283,7 +302,7 @@ export default function AdminPhotos() {
       }
 
       if (!res.ok || result?.error) {
-        setErrorMsg(result?.error || 'Fotoğraf silinirken hata oluştu.')
+        setErrorMsg(result?.error || 'Medya silinirken hata oluştu.')
         return
       }
 
@@ -304,7 +323,7 @@ export default function AdminPhotos() {
       })
     } catch (err: any) {
       console.error(err)
-      setErrorMsg(err.message || 'Fotoğraf silinirken bilinmeyen bir hata oluştu.')
+      setErrorMsg(err.message || 'Medya silinirken bilinmeyen bir hata oluştu.')
     } finally {
       setDeletingId(null)
     }
@@ -385,16 +404,16 @@ export default function AdminPhotos() {
               </p>
 
               <h1 className="mt-1 text-3xl font-bold text-[#7A2E3A]">
-                Yüklenen Fotoğraflar
+                Yüklenen Fotoğraf ve Videolar
               </h1>
 
               <p className="mt-1 text-sm text-[#6F5B5D]">
-                Misafirlerin yüklediği tüm fotoğrafları buradan görüntüleyebilirsiniz.
+                Misafirlerin yüklediği tüm fotoğraf ve videoları buradan görüntüleyebilirsiniz.
               </p>
 
               {photos.length > 0 && (
                 <p className="mt-2 text-sm font-medium text-[#7A2E3A]">
-                  Şu anda {photos.length} fotoğraf yüklendi.
+                  Şu anda {photos.length} medya yüklendi.
                 </p>
               )}
             </div>
@@ -405,7 +424,7 @@ export default function AdminPhotos() {
                 disabled={photos.length === 0 || isBulkDownloading}
                 className="rounded-xl border border-[#B76E79] bg-white px-5 py-3 font-semibold text-[#7A2E3A] shadow-sm transition hover:bg-[#FFF1ED] disabled:cursor-not-allowed disabled:opacity-60"
               >
-                {isBulkDownloading ? 'ZIP Hazırlanıyor...' : 'Fotoğrafları ZIP İndir'}
+                {isBulkDownloading ? 'ZIP Hazırlanıyor...' : 'Tüm Medyayı ZIP İndir'}
               </button>
 
               <button
@@ -432,7 +451,7 @@ export default function AdminPhotos() {
 
         {photos.length === 0 && !loading && !errorMsg && (
           <p className="rounded-xl border border-[#F0D6D3] bg-white px-4 py-6 text-center text-[#6F5B5D] shadow-sm">
-            Henüz fotoğraf yüklenmemiş.
+            Henüz fotoğraf veya video yüklenmemiş.
           </p>
         )}
 
@@ -448,14 +467,36 @@ export default function AdminPhotos() {
                 className="block w-full text-left"
               >
                 <div className="overflow-hidden bg-[#FFF1ED]">
-                  <img
-                    src={getPhotoUrl(photo.file_path)}
-                    alt={photo.guest_name || 'Fotoğraf'}
-                    className="h-52 w-full object-cover transition duration-300 group-hover:scale-105"
-                  />
+                  {isVideoMedia(photo) ? (
+                    <div className="relative">
+                      <video
+                        src={getPhotoUrl(photo.file_path)}
+                        muted
+                        playsInline
+                        preload="metadata"
+                        className="h-52 w-full object-cover transition duration-300 group-hover:scale-105"
+                      />
+
+                      <div className="absolute inset-0 flex items-center justify-center bg-black/20">
+                        <span className="rounded-full bg-white/90 px-4 py-2 text-sm font-semibold text-[#7A2E3A] shadow">
+                          ▶ Video
+                        </span>
+                      </div>
+                    </div>
+                  ) : (
+                    <img
+                      src={getPhotoUrl(photo.file_path)}
+                      alt={photo.guest_name || 'Fotoğraf'}
+                      className="h-52 w-full object-cover transition duration-300 group-hover:scale-105"
+                    />
+                  )}
                 </div>
 
                 <div className="p-4">
+                  <p className="mb-2 inline-flex rounded-full bg-[#FFF1ED] px-3 py-1 text-xs font-semibold text-[#7A2E3A]">
+                    {getMediaLabel(photo)}
+                  </p>
+
                   {photo.guest_name ? (
                     <p className="font-semibold text-[#4A3437]">
                       {photo.guest_name}
@@ -487,7 +528,7 @@ export default function AdminPhotos() {
                   disabled={downloadingId === photo.id}
                   className="w-full rounded-xl border border-[#B76E79] bg-white px-4 py-2 text-sm font-semibold text-[#7A2E3A] transition hover:bg-[#FFF1ED] disabled:cursor-not-allowed disabled:opacity-60"
                 >
-                  {downloadingId === photo.id ? 'İndiriliyor...' : 'Fotoğrafı İndir'}
+                  {downloadingId === photo.id ? 'İndiriliyor...' : 'Medyayı İndir'}
                 </button>
 
                 <button
@@ -496,7 +537,7 @@ export default function AdminPhotos() {
                   disabled={deletingId === photo.id}
                   className="w-full rounded-xl border border-[#D45B5B] bg-white px-4 py-2 text-sm font-semibold text-[#B42323] transition hover:bg-[#FFF1F0] disabled:cursor-not-allowed disabled:opacity-60"
                 >
-                  {deletingId === photo.id ? 'Siliniyor...' : 'Fotoğrafı Sil'}
+                  {deletingId === photo.id ? 'Siliniyor...' : 'Medyayı Sil'}
                 </button>
               </div>
             </div>
@@ -510,7 +551,7 @@ export default function AdminPhotos() {
               className="rounded-xl bg-[#B76E79] px-6 py-3 font-semibold text-white shadow-md transition hover:bg-[#9F5965] disabled:cursor-not-allowed disabled:bg-[#CDB8BA]"
               disabled={loading}
             >
-              {loading ? 'Yükleniyor...' : 'Daha Fazla Fotoğraf'}
+              {loading ? 'Yükleniyor...' : 'Daha Fazla Medya'}
             </button>
           </div>
         )}
@@ -521,8 +562,8 @@ export default function AdminPhotos() {
           <button
             type="button"
             onClick={closePhoto}
-            className="absolute right-4 top-4 flex h-11 w-11 items-center justify-center rounded-full bg-white/15 text-4xl leading-none text-white transition hover:bg-white/25"
-            aria-label="Fotoğrafı kapat"
+            className="absolute right-4 top-4 z-10 flex h-11 w-11 items-center justify-center rounded-full bg-white/15 text-4xl leading-none text-white transition hover:bg-white/25"
+            aria-label="Medyayı kapat"
           >
             ×
           </button>
@@ -531,23 +572,33 @@ export default function AdminPhotos() {
             <button
               type="button"
               onClick={showPreviousPhoto}
-              className="absolute left-4 top-1/2 flex h-12 w-12 -translate-y-1/2 items-center justify-center rounded-full bg-white/15 text-4xl text-white transition hover:bg-white/25"
-              aria-label="Önceki fotoğraf"
+              className="absolute left-4 top-1/2 z-10 flex h-12 w-12 -translate-y-1/2 items-center justify-center rounded-full bg-white/15 text-4xl text-white transition hover:bg-white/25"
+              aria-label="Önceki medya"
             >
               ‹
             </button>
           )}
 
           <div className="flex w-full max-w-6xl flex-col items-center">
-            <img
-              src={getPhotoUrl(selectedPhoto.file_path)}
-              alt={selectedPhoto.guest_name || 'Fotoğraf'}
-              className="max-h-[72vh] max-w-full rounded-2xl object-contain shadow-2xl"
-            />
+            {isVideoMedia(selectedPhoto) ? (
+              <video
+                key={selectedPhoto.file_path}
+                src={getPhotoUrl(selectedPhoto.file_path)}
+                controls
+                playsInline
+                className="max-h-[72vh] max-w-full rounded-2xl object-contain shadow-2xl"
+              />
+            ) : (
+              <img
+                src={getPhotoUrl(selectedPhoto.file_path)}
+                alt={selectedPhoto.guest_name || 'Fotoğraf'}
+                className="max-h-[72vh] max-w-full rounded-2xl object-contain shadow-2xl"
+              />
+            )}
 
             <div className="mt-4 max-w-2xl rounded-2xl bg-white/10 px-5 py-4 text-center text-white backdrop-blur">
               <p className="mb-1 text-sm text-[#F5D9D6]">
-                {selectedPhotoIndex + 1} / {photos.length}
+                {selectedPhotoIndex + 1} / {photos.length} · {getMediaLabel(selectedPhoto)}
               </p>
 
               {selectedPhoto.guest_name && (
@@ -575,7 +626,7 @@ export default function AdminPhotos() {
                   disabled={downloadingId === selectedPhoto.id}
                   className="rounded-xl bg-white px-5 py-2 text-sm font-semibold text-[#7A2E3A] transition hover:bg-[#FFF1ED] disabled:cursor-not-allowed disabled:opacity-60"
                 >
-                  {downloadingId === selectedPhoto.id ? 'İndiriliyor...' : 'Fotoğrafı İndir'}
+                  {downloadingId === selectedPhoto.id ? 'İndiriliyor...' : 'Medyayı İndir'}
                 </button>
 
                 <button
@@ -584,7 +635,7 @@ export default function AdminPhotos() {
                   disabled={deletingId === selectedPhoto.id}
                   className="rounded-xl bg-[#B42323] px-5 py-2 text-sm font-semibold text-white transition hover:bg-[#8F1D1D] disabled:cursor-not-allowed disabled:opacity-60"
                 >
-                  {deletingId === selectedPhoto.id ? 'Siliniyor...' : 'Bu Fotoğrafı Sil'}
+                  {deletingId === selectedPhoto.id ? 'Siliniyor...' : 'Bu Medyayı Sil'}
                 </button>
               </div>
             </div>
@@ -594,8 +645,8 @@ export default function AdminPhotos() {
             <button
               type="button"
               onClick={showNextPhoto}
-              className="absolute right-4 top-1/2 flex h-12 w-12 -translate-y-1/2 items-center justify-center rounded-full bg-white/15 text-4xl text-white transition hover:bg-white/25"
-              aria-label="Sonraki fotoğraf"
+              className="absolute right-4 top-1/2 z-10 flex h-12 w-12 -translate-y-1/2 items-center justify-center rounded-full bg-white/15 text-4xl text-white transition hover:bg-white/25"
+              aria-label="Sonraki medya"
             >
               ›
             </button>

@@ -12,35 +12,29 @@ const weddingFont = Luxurious_Script({
   display: 'swap',
 })
 
-const MAX_FILE_SIZE = 50 * 1024 * 1024 // 50 MB
+const IMAGE_EXTENSIONS = ['.jpg', '.jpeg', '.png', '.webp', '.heic', '.heif', '.jfif']
+const VIDEO_EXTENSIONS = ['.mp4', '.mov', '.m4v', '.webm', '.avi', '.mkv']
 
-const ALLOWED_IMAGE_TYPES = [
-  'image/jpeg',
-  'image/jpg',
-  'image/png',
-  'image/x-png',
-  'image/webp',
-  'image/heic',
-  'image/heif',
-]
-
-const ALLOWED_IMAGE_EXTENSIONS = [
-  '.jpg',
-  '.jpeg',
-  '.png',
-  '.webp',
-  '.heic',
-  '.heif',
-  '.jfif',
-]
-
-const isAllowedImageFile = (file: File) => {
+const isImageFile = (file: File) => {
   const fileName = file.name.toLowerCase()
 
   return (
-    ALLOWED_IMAGE_TYPES.includes(file.type) ||
-    ALLOWED_IMAGE_EXTENSIONS.some(ext => fileName.endsWith(ext))
+    file.type.startsWith('image/') ||
+    IMAGE_EXTENSIONS.some(ext => fileName.endsWith(ext))
   )
+}
+
+const isVideoFile = (file: File) => {
+  const fileName = file.name.toLowerCase()
+
+  return (
+    file.type.startsWith('video/') ||
+    VIDEO_EXTENSIONS.some(ext => fileName.endsWith(ext))
+  )
+}
+
+const isMediaFile = (file: File) => {
+  return isImageFile(file) || isVideoFile(file)
 }
 
 export default function UploadPage() {
@@ -56,24 +50,11 @@ export default function UploadPage() {
     if (e.target.files && e.target.files.length > 0) {
       const selectedFiles = Array.from(e.target.files)
 
-      const validFiles = selectedFiles.filter(file => {
-        if (!isAllowedImageFile(file)) {
-          return false
-        }
-
-        if (file.size > MAX_FILE_SIZE) {
-          return false
-        }
-
-        return true
-      })
-
+      const validFiles = selectedFiles.filter(file => isMediaFile(file))
       const rejectedCount = selectedFiles.length - validFiles.length
 
       if (validFiles.length === 0) {
-        setStatus(
-          'Seçtiğiniz dosya uygun değil. Lütfen yalnızca 50 MB’dan küçük fotoğraf yükleyin.'
-        )
+        setStatus('Lütfen yalnızca fotoğraf veya video yükleyin.')
         setUploadCompleted(false)
         e.target.value = ''
         return
@@ -94,7 +75,7 @@ export default function UploadPage() {
 
       if (rejectedCount > 0) {
         setStatus(
-          `${validFiles.length} fotoğraf eklendi. ${rejectedCount} dosya fotoğraf olmadığı veya 50 MB’dan büyük olduğu için eklenmedi.`
+          `${validFiles.length} medya eklendi. ${rejectedCount} dosya fotoğraf/video olmadığı için eklenmedi.`
         )
       } else {
         setStatus('')
@@ -134,14 +115,14 @@ export default function UploadPage() {
         .normalize('NFD')
         .replace(/[\u0300-\u036f]/g, '')
         .replace(/[^a-zA-Z0-9-_.]/g, '_')
-        .slice(-90) || 'photo.jpg'
+        .slice(-90) || 'media-file'
 
     return `${Date.now()}-${uniquePart}-${safeOriginalName}`
   }
 
   const handleUpload = async () => {
     if (files.length === 0) {
-      alert('Lütfen en az bir fotoğraf seçin veya fotoğraf çekin')
+      alert('Lütfen en az bir fotoğraf veya video seçin')
       return
     }
 
@@ -154,51 +135,50 @@ export default function UploadPage() {
       for (let i = 0; i < files.length; i++) {
         const file = files[i]
 
-        if (!isAllowedImageFile(file)) {
+        if (!isMediaFile(file)) {
           setStatus(
-            `${i + 1}. dosya fotoğraf formatında değil. Lütfen sadece fotoğraf yükleyin.`
+            `${i + 1}. dosya fotoğraf/video formatında değil. Lütfen sadece fotoğraf veya video yükleyin.`
           )
           return
         }
 
-        if (file.size > MAX_FILE_SIZE) {
-          setStatus(
-            `${i + 1}. fotoğraf 50 MB’dan büyük. Lütfen daha küçük bir fotoğraf seçin.`
-          )
-          return
+        const fileKind = isVideoFile(file) ? 'video' : 'fotoğraf'
+
+        let uploadFile: File | Blob = file
+        let uploadFileName = file.name
+        let uploadMimeType = file.type || 'application/octet-stream'
+
+        if (isImageFile(file)) {
+          setStatus(`${i + 1}/${files.length} fotoğraf sıkıştırılıyor...`)
+          const compressed = await compressImage(file)
+
+          uploadFile = compressed
+          uploadFileName = compressed.name || file.name
+          uploadMimeType = compressed.type || file.type || 'image/jpeg'
+        } else {
+          setStatus(`${i + 1}/${files.length} video hazırlanıyor...`)
         }
 
-        setStatus(`${i + 1}/${files.length} fotoğraf sıkıştırılıyor...`)
-
-        const compressed = await compressImage(file)
-
-        if (compressed.size > MAX_FILE_SIZE) {
-          setStatus(
-            `${i + 1}. fotoğraf sıkıştırıldıktan sonra bile 50 MB’dan büyük. Lütfen daha küçük bir fotoğraf seçin.`
-          )
-          return
-        }
-
-        const fileName = createSafeFileName(compressed.name || file.name, i)
+        const fileName = createSafeFileName(uploadFileName, i)
         const filePath = `photos/${fileName}`
 
-        setStatus(`${i + 1}/${files.length} fotoğraf Storage’a yükleniyor...`)
+        setStatus(`${i + 1}/${files.length} ${fileKind} Storage’a yükleniyor...`)
 
         const { error: uploadError } = await supabase.storage
           .from('wedding-photos')
-          .upload(filePath, compressed, {
-            contentType: compressed.type || file.type || 'image/jpeg',
+          .upload(filePath, uploadFile, {
+            contentType: uploadMimeType,
             upsert: false,
           })
 
         if (uploadError) {
           setStatus(
-            `${i + 1}. fotoğraf yüklenirken hata oluştu: ${uploadError.message}`
+            `${i + 1}. ${fileKind} yüklenirken hata oluştu: ${uploadError.message}`
           )
           return
         }
 
-        setStatus(`${i + 1}/${files.length} fotoğraf veritabanına kaydediliyor...`)
+        setStatus(`${i + 1}/${files.length} medya veritabanına kaydediliyor...`)
 
         const res = await fetch('/api/upload', {
           method: 'POST',
@@ -209,8 +189,8 @@ export default function UploadPage() {
             file_path: filePath,
             guest_name: null,
             message: message.trim() || null,
-            file_size: compressed.size,
-            mime_type: compressed.type || file.type || 'image/jpeg',
+            file_size: uploadFile.size,
+            mime_type: uploadMimeType,
           }),
         })
 
@@ -218,7 +198,7 @@ export default function UploadPage() {
 
         if (!res.ok || data.error) {
           setStatus(
-            `${i + 1}. fotoğraf DB’ye kaydedilirken hata oluştu: ${
+            `${i + 1}. medya DB’ye kaydedilirken hata oluştu: ${
               data.error || 'Bilinmeyen hata'
             }`
           )
@@ -267,11 +247,11 @@ export default function UploadPage() {
         </p>
 
         <p className="mt-1 text-[0.95rem] font-medium leading-6 sm:text-[1rem]">
-          Bu özel günde yakaladığınız kareleri bizimle paylaşabilirsiniz.
+          Bu özel günde yakaladığınız fotoğraf ve videoları bizimle paylaşabilirsiniz.
         </p>
 
         <p className="mt-3 text-[0.82rem] italic font-semibold leading-5 text-[#7A7677]">
-          (Tüm fotoğraflar yalnızca gelin ve damat tarafından görüntülenecektir.)
+          (Tüm medya yalnızca gelin ve damat tarafından görüntülenecektir.)
         </p>
       </div>
     </div>
@@ -324,7 +304,7 @@ export default function UploadPage() {
             </h1>
 
             <h2 className="mt-4 text-2xl font-semibold text-[#7A2E3A]">
-              Fotoğraflarınız Yüklendi
+              Medyanız Yüklendi
             </h2>
 
             <p className="mt-2 text-sm text-[#6F5B5D]">
@@ -332,11 +312,11 @@ export default function UploadPage() {
             </p>
 
             <p className="mt-4 rounded-xl border border-[#F0D6D3] bg-[#FFF9F6]/85 px-4 py-3 text-sm font-semibold text-[#5A4245]">
-              {uploadedCount} fotoğraf başarıyla yüklendi.
+              {uploadedCount} dosya başarıyla yüklendi.
             </p>
 
             <p className="mt-3 text-xs italic font-semibold text-[#7A7677]">
-              (Tüm fotoğraflar yalnızca gelin ve damat tarafından görüntülenecektir.)
+              (Tüm medya yalnızca gelin ve damat tarafından görüntülenecektir.)
             </p>
 
             <button
@@ -344,7 +324,7 @@ export default function UploadPage() {
               onClick={resetUploadForm}
               className="mt-5 w-full rounded-xl bg-[#B76E79] py-3 font-semibold text-white shadow-md transition hover:bg-[#9F5965]"
             >
-              Yeni Fotoğraf Yükle
+              Yeni Fotoğraf / Video Yükle
             </button>
 
             <Link
@@ -380,7 +360,7 @@ export default function UploadPage() {
             key={`gallery-${fileInputKey}`}
             id="gallery-upload-input"
             type="file"
-            accept="image/*"
+            accept="image/*,video/*"
             multiple
             onChange={addSelectedFiles}
             disabled={isUploading}
@@ -391,7 +371,7 @@ export default function UploadPage() {
             key={`camera-${fileInputKey}`}
             id="camera-upload-input"
             type="file"
-            accept="image/*"
+            accept="image/*,video/*"
             capture="environment"
             onChange={addSelectedFiles}
             disabled={isUploading}
@@ -412,7 +392,7 @@ export default function UploadPage() {
               </span>
 
               <span className="mt-2 text-sm leading-6 text-[#7A6769]">
-                Birden fazla fotoğraf
+                Fotoğraf veya video
                 <br />
                 seçebilirsiniz.
               </span>
@@ -427,13 +407,13 @@ export default function UploadPage() {
               }`}
             >
               <span className="text-[1.05rem] font-semibold text-[#7A2E3A]">
-                Fotoğraf Çek
+                Kamera Aç
               </span>
 
               <span className="mt-2 text-sm leading-6 text-[#7A6769]">
-                Kamerayı açıp yeni
+                Fotoğraf veya video
                 <br />
-                fotoğraf çekin.
+                çekebilirsiniz.
               </span>
             </label>
           </div>
@@ -442,7 +422,7 @@ export default function UploadPage() {
             <div className="mb-4 mt-4 rounded-xl border border-[#E8C7C8] bg-[#FFFDFB]/85 p-3 text-sm text-[#4A3A3C]">
               <div className="flex items-center justify-between gap-3">
                 <p className="font-semibold text-[#7A2E3A]">
-                  {files.length} fotoğraf seçildi.
+                  {files.length} dosya seçildi.
                 </p>
 
                 <button
@@ -462,7 +442,7 @@ export default function UploadPage() {
                     className="flex items-center justify-between gap-2 text-[#6F5B5D]"
                   >
                     <span className="truncate">
-                      {index + 1}. {file.name}
+                      {index + 1}. {isVideoFile(file) ? '🎥' : '📷'} {file.name}
                     </span>
 
                     <button
@@ -484,7 +464,7 @@ export default function UploadPage() {
             disabled={isUploading}
             className="mt-4 w-full rounded-2xl bg-[#BE7784] py-4 text-xl font-semibold text-white shadow-md transition hover:bg-[#AA6674] disabled:cursor-not-allowed disabled:bg-[#CDB8BA]"
           >
-            {isUploading ? 'Yükleniyor...' : 'Fotoğrafları Yükle'}
+            {isUploading ? 'Yükleniyor...' : 'Fotoğraf / Video Yükle'}
           </button>
 
           {status && (
